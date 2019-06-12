@@ -1,4 +1,4 @@
-#!/bin/bash
+#/bin/bash
 # Copyright (c) 2013-2015, Rethink Robotics
 # All rights reserved.
 
@@ -8,7 +8,7 @@
 # should be executed with every new instance of a shell in which you plan on
 # working with Baxter.
 
-# Clear any previously set your_ip/your_hostname
+## Clear any previously set your_ip/your_hostname
 unset your_ip
 unset your_hostname
 #-----------------------------------------------------------------------------#
