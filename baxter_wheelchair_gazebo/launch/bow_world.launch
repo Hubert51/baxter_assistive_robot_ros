@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+  <arg name="show_rviz" default="true"/>
+  <arg name="use_sim_time" default="true" />
+  <arg name="gui" default="true" />
+  <arg name="paused" default="false" />
+  <arg name="debug" default="false" />
+  <arg name="headless" default="false" />
+  <arg name="artrack" default="true" />
+  <!-- <arg name="world_name" default="worlds/empty.world" /> -->
+  <group if="$(arg artrack)">
+    <arg name="world_name" default="$(find baxter_wheelchair_gazebo)/worlds/bow_home_artrack.world" />
+
+    <!-- Launch Gazebo with the specified world -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="paused" value="$(arg paused)" />
+      <arg name="debug" value="$(arg debug)" />
+      <arg name="gui" value="$(arg gui)" />
+      <arg name="use_sim_time" value="$(arg use_sim_time)" />
+      <arg name="headless" value="$(arg headless)" />
+      <arg name="world_name" value="$(arg world_name)" />
+    </include>
+
+  </group>
+
+  <group unless="$(arg artrack)">
+    <arg name="world_name" default="$(find baxter_wheelchair_gazebo)/worlds/bow_home.world" />
+
+    <!-- Launch Gazebo with the specified world -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="paused" value="$(arg paused)" />
+      <arg name="debug" value="$(arg debug)" />
+      <arg name="gui" value="$(arg gui)" />
+      <arg name="use_sim_time" value="$(arg use_sim_time)" />
+      <arg name="headless" value="$(arg headless)" />
+      <arg name="world_name" value="$(arg world_name)" />
+    </include>
+
+  </group>
+
+</launch>

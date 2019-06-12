@@ -1,0 +1,11 @@
+<launch>
+  <!-- load joint controller configurations from YAML file to parameter server -->
+  <rosparam command="load" file="$(find baxter_wheelchair_control)/config/joint_position_control.yaml" />
+
+  <!-- load the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+        args="joint_state_controller" />
+
+  <!--<node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization" /> -->
+
+</launch>

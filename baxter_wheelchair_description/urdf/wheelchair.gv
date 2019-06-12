@@ -1,0 +1,47 @@
+digraph G {
+node [shape=box];
+"base_footprint" [label="base_footprint"];
+"base_link" [label="base_link"];
+"imu_link" [label="imu_link"];
+"left_bar" [label="left_bar"];
+"front_left_swivel" [label="front_left_swivel"];
+"front_left_wheel" [label="front_left_wheel"];
+"left_main_wheel" [label="left_main_wheel"];
+"rear_left_swivel" [label="rear_left_swivel"];
+"rear_left_wheel" [label="rear_left_wheel"];
+"right_bar" [label="right_bar"];
+"front_right_swivel" [label="front_right_swivel"];
+"front_right_wheel" [label="front_right_wheel"];
+"rear_right_swivel" [label="rear_right_swivel"];
+"rear_right_wheel" [label="rear_right_wheel"];
+"right_main_wheel" [label="right_main_wheel"];
+node [shape=ellipse, color=blue, fontcolor=blue];
+"base_footprint" -> "base_footprint_joint" [label="xyz: 0 0 0.3 \nrpy: 0 -0 0"]
+"base_footprint_joint" -> "base_link"
+"base_link" -> "imu_joint" [label="xyz: 0 0 0 \nrpy: -3.14159 -0 0"]
+"imu_joint" -> "imu_link"
+"base_link" -> "left_bar_joint" [label="xyz: 0 -0.3215 -0.15 \nrpy: 0 -0 0"]
+"left_bar_joint" -> "left_bar"
+"left_bar" -> "front_left_swivel_joint" [label="xyz: -0.406 0 -0.05 \nrpy: 0 -0 0"]
+"front_left_swivel_joint" -> "front_left_swivel"
+"front_left_swivel" -> "front_left_wheel_joint" [label="xyz: 0.065 0 0 \nrpy: 1.57075 -0 0"]
+"front_left_wheel_joint" -> "front_left_wheel"
+"left_bar" -> "left_main_wheel_joint" [label="xyz: 0 0 0.026 \nrpy: 1.57075 -0 0"]
+"left_main_wheel_joint" -> "left_main_wheel"
+"left_bar" -> "rear_left_swivel_joint" [label="xyz: 0.406 0 -0.05 \nrpy: 0 -0 0"]
+"rear_left_swivel_joint" -> "rear_left_swivel"
+"rear_left_swivel" -> "rear_left_wheel_joint" [label="xyz: 0.065 0 0 \nrpy: 1.57075 -0 0"]
+"rear_left_wheel_joint" -> "rear_left_wheel"
+"base_link" -> "right_bar_joint" [label="xyz: 0 0.3215 -0.15 \nrpy: 0 -0 0"]
+"right_bar_joint" -> "right_bar"
+"right_bar" -> "front_right_swivel_joint" [label="xyz: -0.406 0 -0.05 \nrpy: 0 -0 0"]
+"front_right_swivel_joint" -> "front_right_swivel"
+"front_right_swivel" -> "front_right_wheel_joint" [label="xyz: 0.065 0 0 \nrpy: 1.57075 -0 0"]
+"front_right_wheel_joint" -> "front_right_wheel"
+"right_bar" -> "rear_right_swivel_joint" [label="xyz: 0.406 0 -0.05 \nrpy: 0 -0 0"]
+"rear_right_swivel_joint" -> "rear_right_swivel"
+"rear_right_swivel" -> "rear_right_wheel_joint" [label="xyz: 0.065 0 0 \nrpy: 1.57075 -0 0"]
+"rear_right_wheel_joint" -> "rear_right_wheel"
+"right_bar" -> "right_main_wheel_joint" [label="xyz: 0 0 0.026 \nrpy: 1.57075 -0 0"]
+"right_main_wheel_joint" -> "right_main_wheel"
+}

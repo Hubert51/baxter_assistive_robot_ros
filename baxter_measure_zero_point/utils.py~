@@ -1,0 +1,8 @@
+import rospy
+from sensor_msgs.msg import JointState
+
+
+def get_current_state():
+    joint_state =rospy.wait_for_message("/robot/joint_states", JointState) 
+    position = 
+    print(joint_state)

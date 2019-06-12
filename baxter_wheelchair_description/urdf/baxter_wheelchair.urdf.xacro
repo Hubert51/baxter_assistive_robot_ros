@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<robot name="bow" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="gazebo" default="false"/>
+
+  <!-- Wheelchair Mobile Base -->
+  <xacro:include filename="$(find baxter_wheelchair_description)/urdf/wheelchair_gazebo.xacro" />
+  
+  <!-- Baxter Base URDF -->
+  <xacro:include filename="$(find baxter_description)/urdf/baxter_base/baxter_base.urdf.xacro">
+    <xacro:arg name="gazebo" value="${gazebo}"/>
+  </xacro:include>
+
+  <!-- <xacro:property name="chair_height" value="1.191" /> --> <!-- From front wheel joint to head rest -->
+  <xacro:property name="chair_height" value="0.4" /> <!-- From front wheel joint to approx height -->
+
+  <!-- Link Baxter Base to Wheelchair -->
+  <joint name="wheelchair_to_baxter" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.09 0 ${chair_height/2 + 0.05}" />
+    <parent link="base_link" />
+    <child link="base" />
+  </joint>
+
+  <!-- Left End Effector -->
+  <xacro:include filename="$(find baxter_description)/urdf/left_end_effector.urdf.xacro" />
+
+  <!-- Right End Effector -->
+  <xacro:include filename="$(find baxter_description)/urdf/right_end_effector.urdf.xacro" />
+
+</robot>

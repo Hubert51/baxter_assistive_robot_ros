@@ -1,0 +1,17 @@
+obstacle_range: 2.5
+raytrace_range: 3.0
+# chair_length = 0.812, chair_width = 0.643
+# defined in ($find baxter_wheelchair_description)/urdf/wheelchair_description.xacro 
+# footprint: [[-0.406, -0.3215], [-0.406, 0.3215], [0.406, 0.3215], [0.406, -0.3215]]
+# include dimensions of left and right bar as well
+# bar_length = chair_length+chair_length/4, bar_width = chair_width/4
+footprint: [[-0.5075, -0.401875], [-0.5075, 0.401875], [0.5075, 0.401875], [0.5075, -0.401875]]
+#robot_radius: ir_of_robot
+#inflation_radius: 0.55
+inflation_radius: 0.75
+
+observation_sources: laser_scan_sensor point_cloud_sensor
+
+laser_scan_sensor: {sensor_frame: kinect_camera_frame, data_type: LaserScan, topic: /scan, marking: true, clearing: true}
+
+point_cloud_sensor: {sensor_frame: kinect_camera_frame, data_type: PointCloud2, topic: /kinect_camera/depth/points, marking: true, clearing: true}
