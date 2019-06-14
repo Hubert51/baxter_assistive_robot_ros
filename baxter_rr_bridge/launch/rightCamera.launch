@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="baxter_rr_bridge" type="camera_host.py" name="right_camera_host" output="screen" args="right_hand_camera --mode 0 --port 4567">
+    </node>
+</launch>

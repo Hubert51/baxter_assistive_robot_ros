@@ -1,0 +1,6 @@
+<launch>
+	<include file="$(find baxter_rr_bridge)/launch/jointController.launch"/>
+	<include file="$(find baxter_rr_bridge)/launch/leftCamera.launch"/>
+	<include file="$(find baxter_rr_bridge)/launch/rightCamera.launch"/>
+	<include file="$(find baxter_rr_bridge)/launch/peripherals.launch"/>
+</launch>

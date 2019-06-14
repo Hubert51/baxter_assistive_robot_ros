@@ -542,6 +542,11 @@ def main(argv):
     
     # This must be here to prevent segfault
     RR.RobotRaconteurNode.s.Shutdown()
+    moveit_commander.os._exit(0)
+
+    # time.sleep(5)
+
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    # Only need two arguments
+    main(sys.argv[1:3])

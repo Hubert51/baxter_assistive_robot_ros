@@ -442,4 +442,4 @@ def main(argv):
     RR.RobotRaconteurNode.s.Shutdown()
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(sys.argv[1:6])

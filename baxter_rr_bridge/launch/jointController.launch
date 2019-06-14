@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="baxter_rr_bridge" type="jointcontroller_host.py" name="jointcontroller_host" output="screen" args="--port 2345">
+    </node>
+</launch>

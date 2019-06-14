@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="baxter_rr_bridge" type="peripherals_host.py" name="peripherals_host" output="screen" args="--port 6708">
+    </node>
+</launch>
