@@ -14,7 +14,6 @@ from geometry_msgs.msg import PoseStamped, PoseArray
 from sensor_msgs.msg import Range
 from sensor_msgs.msg import JointState
 
-
 import rospkg
 import geometry_msgs.msg
 from geometry_msgs.msg import (
@@ -25,6 +24,7 @@ from geometry_msgs.msg import (
 )
 
 import utils
+from jointcontroller_host import Baxter_impl
 
 # Define initial parameters.
 rospy.init_node('pnp', anonymous=True)
@@ -350,8 +350,10 @@ def measure_zero_point():
 def move_arm():
 
     # explore the API
-    utils.explore_pose_goal(both_arms)
+    # utils.explore_pose_goal(both_arms)
 
+    robotArm = Baxter_impl()
+    print robotArm.joint_positions()
     # rospy.Subscriber("chatter", String, callback)
     # joint_state =rospy.wait_for_message("/robot/joint_states", JointState) 
     # utils.get_current_joint_state()
