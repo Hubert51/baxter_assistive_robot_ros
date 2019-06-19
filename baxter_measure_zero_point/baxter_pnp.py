@@ -65,14 +65,32 @@ rospy.sleep(2)
 # box_pose.pose.position.z = 0.5
 # scene.add_box("table", box_pose, (0.5, 1.5, 0.6))
 
+
 # name size and position
-p.addBox("first part", 0.8, 0.43, 0.02, 1.23, 0, 0.34)
-p.addBox("under part", 0.8, 0.43, 0.04, 1.23, 0, 0.0)
+'''
+def moveit_python.planning_scene_interface.PlanningSceneInterface.addBox(       self,
+            name,
+            size_x,
+            size_y,
+            size_z,
+            x,
+            y,
+            z,
+            wait = True 
+    )      
+''' 
 
-p.addBox("second part", 0.8, 0.01, 1.6, 1.23, -0.22, 0)
-p.addBox("third part", 0.8, 0.01, 1.6, 1.23, 0.22, 0)
+## size_x is depth of the scene in baxter world
+## size_z is width of the scene in baxter world
+## size_z is height of the scene in baxter world
+## x,y,z is the center points of the scene
+# p.addBox("first part", 0.8, 0.43, 0.02, 1.23, 0, 0.34)
+# p.addBox("under part", 0.8, 0.43, 0.04, 1.23, 0, 0.0)
 
-p.waitForSync()
+# p.addBox("second part", 0.8, 0.01, 1.6, 1.23, -0.22, 0)
+# p.addBox("third part", 0.8, 0.01, 1.6, 1.23, 0.22, 0)
+
+# p.waitForSync()
 
 def load_gazebo_models(table_pose=Pose(position=Point(x=0.7, y=0.0, z=0.0)),
                        table_reference_frame="world",
