@@ -48,9 +48,9 @@ p = PlanningSceneInterface("base")
 # Create baxter_interface gripper instance.
 leftgripper = baxter_interface.Gripper('left')
 rightgripper = baxter_interface.Gripper('right')
-# leftgripper.calibrate()
+leftgripper.calibrate()
 rightgripper.calibrate()
-# leftgripper.open()
+leftgripper.open()
 rightgripper.open()
 
 scene = moveit_commander.PlanningSceneInterface()
