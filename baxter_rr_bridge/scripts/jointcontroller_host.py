@@ -29,7 +29,7 @@ from baxter_core_msgs.srv import (
 import moveit_commander
 moveit_commander.roscpp_initialize(sys.argv)
 import baxter_interface
-
+from moveit_python import PlanningSceneInterface, MoveGroupInterface
 
 
 
@@ -43,6 +43,7 @@ object Baxter
 property double[] joint_positions
 property double[] joint_velocities
 property double[] joint_torques
+property string{list} joint_names
 property double[] endeffector_positions
 property double[] endeffector_orientations
 property double[] endeffector_twists
@@ -54,6 +55,11 @@ function void setControlMode(uint8 mode)
 # will consider the collision between arms themselves and environment obstacles
 function void setJointCommand(string limb, double[] command)
 function void moveitSetJointCommand(string limb, double[] command)
+
+# add scene in the environment
+function void addScene(string name, double[] dim, double[] pos)
+function void removeScene(string name)
+function void attachBox(string name, double[] dim, double[] pos, string link_name)
 
 function void setPositionModeSpeed(double speed)
 function double[] solveIKfast(double[] positions, double[] quaternions, string limb_choice)
@@ -89,6 +95,7 @@ class Baxter_impl(object):
         self._jointpos = [0]*14
         self._jointvel = [0]*14
         self._jointtor = [0]*14
+        self._jointname = self._l_jnames + self._r_jnames
         self._ee_pos = [0]*6
         self._ee_or = [0]*8
         self._ee_tw = [0]*12
@@ -119,7 +126,7 @@ class Baxter_impl(object):
         self.leftarm = baxter_interface.limb.Limb('left')
         self.rightarm = baxter_interface.limb.Limb('right')
         # # Initialize the planning scene interface.
-        # p = PlanningSceneInterface("base")
+        self.p = PlanningSceneInterface("base")
         # # Create baxter_interface gripper instance.
         self.leftgripper = baxter_interface.Gripper('left')
         self.rightgripper = baxter_interface.Gripper('right')
@@ -159,6 +166,10 @@ class Baxter_impl(object):
     @property	
     def joint_torques(self):
         return self._jointtor
+
+    @property   
+    def joint_names(self):
+        return self._jointname
     
     @property 
     def endeffector_positions(self):
@@ -175,6 +186,8 @@ class Baxter_impl(object):
     @property 
     def endeffector_wrenches(self):
         return self._ee_wr
+
+
     
     def readJointPositions(self):
         l_angles = self._left.joint_angles()
@@ -430,6 +443,28 @@ class Baxter_impl(object):
             self.both_arms.set_joint_value_target(init_pos)
             self.both_arms.plan()
             self.both_arms.go(wait=True)
+
+
+    ## @brief if two scenes share same name, the second one will replace the first one
+    ## @param name: name of the scene
+    ## @param dim: one by three array, dimension of the scene
+    ## @param pos: one by three array, position of the scene
+    def addScene(self, name, dim, pos):
+        self.p.addBox(name, dim[0], dim[1], dim[2], pos[0], pos[1], pos[2])
+        self.p.waitForSync()
+
+
+    ## @param name: the name of the scene will be removed
+    def removeScene(self, name):
+        self.p.removeCollisionObject(name)
+
+
+    ## @brief attach the box onto one specific joint
+    ## @param name: name of the scene
+    ## @param dim: one by three array, dimension of the scene
+    ## @param pos: one by three array, position of the scene
+    def attachBox(self, boxName, dim, pos, joint_name):
+        self.p.attachBox(boxName, dim[0], dim[1], dim[2], pos[0], pos[1], pos[2], joint_name)
 
 
     def testFunction(self):
