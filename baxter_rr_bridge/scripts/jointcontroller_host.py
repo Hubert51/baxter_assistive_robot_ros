@@ -57,9 +57,9 @@ function void setJointCommand(string limb, double[] command)
 function void moveitSetJointCommand(string limb, double[] command)
 
 # add scene in the environment
-function void addScene(string name, double[] dim, double[] pos)
+function void addBox(string name, double[] dim, double[] pos)
 function void removeScene(string name)
-function void attachBox(string name, double[] dim, double[] pos, string link_name)
+function void attachBox(string jointName, string boxName)
 
 function void setPositionModeSpeed(double speed)
 function double[] solveIKfast(double[] positions, double[] quaternions, string limb_choice)
@@ -116,6 +116,12 @@ class Baxter_impl(object):
         self.both_arms = moveit_commander.MoveGroupCommander('both_arms')
         self.right_arm = moveit_commander.MoveGroupCommander('right_arm')
         self.left_arm = moveit_commander.MoveGroupCommander('left_arm')
+        self.scene = moveit_commander.PlanningSceneInterface()
+        self.robot = moveit_commander.RobotCommander()
+        rospy.sleep(2)
+
+        # # Initialize the planning scene interface. from moveit_python package
+        self.p = PlanningSceneInterface("base")
         # Allow replanning to increase the odds of a solution.
         self.right_arm.allow_replanning(True)
         self.left_arm.allow_replanning(True)
@@ -125,8 +131,7 @@ class Baxter_impl(object):
         # Create baxter_interface limb instance.
         self.leftarm = baxter_interface.limb.Limb('left')
         self.rightarm = baxter_interface.limb.Limb('right')
-        # # Initialize the planning scene interface.
-        self.p = PlanningSceneInterface("base")
+
         # # Create baxter_interface gripper instance.
         self.leftgripper = baxter_interface.Gripper('left')
         self.rightgripper = baxter_interface.Gripper('right')
@@ -449,9 +454,13 @@ class Baxter_impl(object):
     ## @param name: name of the scene
     ## @param dim: one by three array, dimension of the scene
     ## @param pos: one by three array, position of the scene
-    def addScene(self, name, dim, pos):
-        self.p.addBox(name, dim[0], dim[1], dim[2], pos[0], pos[1], pos[2])
-        self.p.waitForSync()
+    def addBox(self, name, dim, pos):
+        p = PoseStamped()
+        p.header.frame_id = self.robot.get_planning_frame()
+        p.pose.position.x = pos[0]
+        p.pose.position.y = pos[1]
+        p.pose.position.z = pos[2]
+        self.scene.add_box(name, p, dim)
 
 
     ## @param name: the name of the scene will be removed
@@ -463,8 +472,8 @@ class Baxter_impl(object):
     ## @param name: name of the scene
     ## @param dim: one by three array, dimension of the scene
     ## @param pos: one by three array, position of the scene
-    def attachBox(self, boxName, dim, pos, joint_name):
-        self.p.attachBox(boxName, dim[0], dim[1], dim[2], pos[0], pos[1], pos[2], joint_name)
+    def attachBox(self, jointName, boxName):
+        self.scene.attach_box(jointName, boxName)
 
 
     def testFunction(self):
