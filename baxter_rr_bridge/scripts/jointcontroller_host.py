@@ -60,6 +60,7 @@ function void moveitSetJointCommand(string limb, double[] command)
 function void addBox(string name, double[] dim, double[] pos)
 function void removeScene(string name)
 function void attachBox(string jointName, string boxName)
+function void removeAttachedObject(string link, string name=Null)
 
 function void setPositionModeSpeed(double speed)
 function double[] solveIKfast(double[] positions, double[] quaternions, string limb_choice)
@@ -474,6 +475,11 @@ class Baxter_impl(object):
     ## @param pos: one by three array, position of the scene
     def attachBox(self, jointName, boxName):
         self.scene.attach_box(jointName, boxName)
+
+    def removeAttachedObject(self, link, name=None):
+        if name == '':
+            name = None
+        self.scene.remove_attached_object(link, name)
 
 
     def testFunction(self):
