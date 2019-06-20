@@ -203,7 +203,7 @@ def set_current_position(arm, *arg):
     current_pos.orientation.w = current_position.pose.orientation.w
     i=len(arg)
     if(i==1):
-	waypoints=arg[0]
+        waypoints=arg[0]
         waypoints.append(current_pos)
     return current_pos
 
@@ -249,17 +249,17 @@ def move(arm, *arg):
         right_arm.execute(plan, wait=True) 
         # Read the position of the right arm to compare it with the goal.
         a=right_arm.get_current_pose()
-	x_pos= a.pose.position.x
-	y_pos= a.pose.position.y
-	z_pos= a.pose.position.z
+        x_pos= a.pose.position.x
+        y_pos= a.pose.position.y
+        z_pos= a.pose.position.z
         # Waiting up to 3 seconds that the goal position is reached or it will compute a normal path.
-	# It is also required to check that the movement is finished because it continues directly
+        # It is also required to check that the movement is finished because it continues directly
         # after the command right_arm.execute() with the next code lines.
         while not((abs(z_pos-goal_z)< 0.01) and (abs(y_pos-goal_y)< 0.01) and (abs(x_pos-goal_x)< 0.01)):
             a=right_arm.get_current_pose()
-	    x_pos= a.pose.position.x
-	    y_pos= a.pose.position.y
-	    z_pos= a.pose.position.z          
+            x_pos= a.pose.position.x
+            y_pos= a.pose.position.y
+            z_pos= a.pose.position.z          
             time.sleep(0.5)
             if(attempts>6):
                 print("----->cartesian path failed!<-----")       
@@ -275,15 +275,15 @@ def move(arm, *arg):
         left_arm.execute(plan, wait=True)
         # Read the position of the left arm to compare it with the goal.
         a=left_arm.get_current_pose()
-	x_pos= a.pose.position.x
-	y_pos= a.pose.position.y
-	z_pos= a.pose.position.z
+        x_pos= a.pose.position.x
+        y_pos= a.pose.position.y
+        z_pos= a.pose.position.z
 
         while not((abs(z_pos-goal_z)< 0.01) and (abs(y_pos-goal_y)< 0.01) and (abs(x_pos-goal_x)< 0.01)):
             a=left_arm.get_current_pose()
-	    x_pos= a.pose.position.x
-	    y_pos= a.pose.position.y
-	    z_pos= a.pose.position.z
+            x_pos= a.pose.position.x
+            y_pos= a.pose.position.y
+            z_pos= a.pose.position.z
             time.sleep(0.5)
 
             if(attempts>6):
@@ -395,7 +395,7 @@ def picknplace():
         # Do the task only if there are still objects on the table.
         while u<len(locs_x):
             # Clear planning scene.
-	    p.clear() 
+            p.clear() 
             # Add table as attached object.
             p.attachBox('table', table_size_x, table_size_y, table_size_z, center_x, center_y, center_z, 'base', touch_links=['pedestal'])
             # Sort objects based on size (largest first to smallest last). This was done to enable stacking large cubes.
@@ -405,29 +405,29 @@ def picknplace():
             locs_y = list(sorted_lists[2])
             orien = list(sorted_lists[3])
             size = list(sorted_lists[0])
-	    # Initialize the data of the biggest object on the table.
-	    xn = locs_x[u]
-	    yn = locs_y[u]	
+            # Initialize the data of the biggest object on the table.
+            xn = locs_x[u]
+            yn = locs_y[u]        
             # -0.16 is the z position to grip the objects on the table.
-	    zn = -0.143
-	    thn = orien[u]
-	    sz = size[u]
-	    if thn > pi/4:
-	        thn = -1*(thn%(pi/4))
+            zn = -0.143
+            thn = orien[u]
+            sz = size[u]
+            if thn > pi/4:
+                thn = -1*(thn%(pi/4))
 
-	    # Add the detected objects into the planning scene.
-	    for i in range(1,len(locs_x)):
-	        p.addBox(objlist[i], 0.05, 0.05, 0.0275, locs_x[i], locs_y[i], center_z_cube)
-	    # Add the stacked objects as collision objects into the planning scene to avoid moving against them.
-	    for e in range(0, k):
-	        p.attachBox(boxlist[e], 0.05, 0.05, 0.0275, placegoal.position.x, placegoal.position.y, center_z_cube+0.0275*(e-1), 'base', touch_links=['cubes'])    
-	    p.waitForSync()
+            # Add the detected objects into the planning scene.
+            for i in range(1,len(locs_x)):
+                p.addBox(objlist[i], 0.05, 0.05, 0.0275, locs_x[i], locs_y[i], center_z_cube)
+            # Add the stacked objects as collision objects into the planning scene to avoid moving against them.
+            for e in range(0, k):
+                p.attachBox(boxlist[e], 0.05, 0.05, 0.0275, placegoal.position.x, placegoal.position.y, center_z_cube+0.0275*(e-1), 'base', touch_links=['cubes'])    
+            p.waitForSync()
             # Initialize the approach pickgoal (5 cm to pickgoal).
             approach_pickgoal = geometry_msgs.msg.Pose()
             approach_pickgoal.position.x = xn
             approach_pickgoal.position.y = yn
             approach_pickgoal.position.z = zn+0.05
-	
+        
             approach_pickgoal_dummy = PoseStamped() 
             approach_pickgoal_dummy.header.frame_id = "base"
             approach_pickgoal_dummy.header.stamp = rospy.Time.now()
@@ -439,7 +439,7 @@ def picknplace():
             approach_pickgoal_dummy.pose.orientation.z = 0.0
             approach_pickgoal_dummy.pose.orientation.w = 0.0
 
-	    # Orientate the gripper --> uses function from geometry.py (by Mike Ferguson) to 'rotate a pose' given rpy angles.
+            # Orientate the gripper --> uses function from geometry.py (by Mike Ferguson) to 'rotate a pose' given rpy angles.
             approach_pickgoal_dummy.pose = rotate_pose_msg_by_euler_angles(approach_pickgoal_dummy.pose, 0.0, 0.0, thn)
             approach_pickgoal.orientation.x = approach_pickgoal_dummy.pose.orientation.x
             approach_pickgoal.orientation.y = approach_pickgoal_dummy.pose.orientation.y
@@ -462,13 +462,13 @@ def picknplace():
             # Define the placegoal.
             placegoal.position.z = -0.143+(k*0.0275)
             move('right',approached_placegoal, placegoal)
-	    rightgripper.open()
+            rightgripper.open()
             time.sleep(1)
             # Move to the approach placegoal.
             move('right',approached_placegoal)
             k += 1
             u += 1
-	    # Move right arm to start position.
+            # Move right arm to start position.
             both_arms.set_joint_value_target(pos1)
             both_arms.plan()
             both_arms.go(wait=True)
