@@ -359,7 +359,7 @@ def measure_zero_point():
     both_arms.set_joint_value_target(pos1)
     both_arms.plan()
     both_arms.go(wait=True)
-    time.sleep(100)
+    time.sleep(2)
     moveit_commander.roscpp_shutdown()
     # Exit MoveIt.
     moveit_commander.os._exit(0)
@@ -368,7 +368,7 @@ def measure_zero_point():
 def move_arm():
 
     # explore the API
-    # utils.explore_pose_goal(both_arms)
+    utils.explore_pose_goal(left_arm)
 
     #######
     # the functionality in jointcontroller_host
@@ -384,9 +384,15 @@ def move_arm():
     # both_arms.plan()
     # both_arms.go(wait=True)
     # raw_input("plz")
-    utils.get_current_joint_state()
+    # utils.get_current_joint_state()
+
+    print "this is left arm", left_arm.get_current_pose()
+    print right_arm.get_current_pose()
+    # print both_arms.get_current_pose()
+    print left_arm.get_current_joint_values()
     #print(joint_state)
-    
+    print "hello world"
+    rospy.sleep(1000)
     moveit_commander.os._exit(0)
 
 
