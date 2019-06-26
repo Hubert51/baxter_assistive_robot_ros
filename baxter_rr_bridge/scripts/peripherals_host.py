@@ -49,6 +49,7 @@ object BaxterPeripherals
 
 function void openGripper(string gripper)
 function void closeGripper(string gripper)
+function void suck(string gripper, uint8 timeout)
 function void calibrateGripper(string gripper)
 function void setGripperPosition(string gripper, double position)
 function void setGripperVelocity(string gripper, double velocity)
@@ -234,11 +235,29 @@ class BaxterPeripherals_impl(object):
         if gripper in self._valid_limb_names.keys():
             self._grippers[self._valid_limb_names[gripper]].open()
     
+    ## @brief if gripper is vacuum. this function can not maintain close state. So we need 
+    ##        another function to use vacuum gripper
     def closeGripper(self, gripper):
         gripper = gripper.lower()
         if gripper in self._valid_limb_names.keys():
             self._grippers[self._valid_limb_names[gripper]].close()
-    
+
+    ## @breif close the gripper if the gripper is vacuum. This function can maintain the suction
+    ##        by setting timeout parameter
+    ## @param timeout: unit in second, keep suctimg within timeout period 
+    def suck(self, gripper, timeout):
+        gripper = gripper.lower()
+        if gripper in self._valid_limb_names.keys():
+            # print timeout
+            # rospy.sleep(2)
+            # self._grippers[self._valid_limb_names[gripper]].command_suction(timeout)
+            # rospy.sleep(2)
+            leftgripper = baxter_interface.Gripper('left')
+            rospy.sleep(1)
+            leftgripper.command_suction(timeout=100)
+
+
+
     def calibrateGripper(self,gripper):
         gripper = gripper.lower()
         if gripper in self._valid_limb_names.keys():

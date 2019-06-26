@@ -63,6 +63,7 @@ property double[] joint_positions
 property double[] joint_velocities
 property double[] joint_torques
 property string{list} joint_names
+property double[] IR_values
 property double[] endeffector_positions
 property double[] endeffector_orientations
 property double[] endeffector_twists
@@ -149,6 +150,9 @@ class Baxter_impl(object):
         self.MODE_TORQUE = 2;
         self._mode = self.MODE_POSITION
 
+        # IR_values
+        self._IR_values = [0] * 2
+
         # initialize the moveit object
         self.both_arms = moveit_commander.MoveGroupCommander('both_arms')
         self.right_arm = moveit_commander.MoveGroupCommander('right_arm')
@@ -200,11 +204,16 @@ class Baxter_impl(object):
         self._t_command.daemon = True
         self._t_command.start()
 
+        self._t_IR_values = threading.Thread(target=self.IR_values_worker)
+        self._t_IR_values.daemon = True
+        self._t_IR_values.start()
+
     def close(self):
         self._running = False
         self._t_joints.join()
         self._t_effector.join()
         self._t_command.join()
+        self._t_IR_values.join()
         
         if (self._mode != self.MODE_POSITION):
             self._left.exit_control_mode()
@@ -225,6 +234,10 @@ class Baxter_impl(object):
     @property   
     def joint_names(self):
         return self._jointname
+
+    @property
+    def IR_values(self):
+        return self.readIRValues()
     
     @property 
     def endeffector_positions(self):
@@ -328,6 +341,12 @@ class Baxter_impl(object):
             self._ee_wr[9] = r_wrench['force'].x
             self._ee_wr[10] = r_wrench['force'].y
             self._ee_wr[11] = r_wrench['force'].z
+
+    def readIRValues(self):
+        return [
+                rospy.wait_for_message("/robot/range/left_hand_range/state", Range).range,
+                rospy.wait_for_message("/robot/range/right_hand_range/state", Range).range
+            ]
     
     
     def setControlMode(self, mode):
@@ -785,8 +804,18 @@ class Baxter_impl(object):
                 time.sleep(0.001)
 
 
-    def ranger_worker(self):
-        pass
+    def IR_values_worker(self):
+        while self._running:
+            t1 = time.time()
+            self._IR_values = [
+                rospy.wait_for_message("/robot/range/left_hand_range/state", Range).range,
+                rospy.wait_for_message("/robot/range/right_hand_range/state", Range).range
+            ]
+            print time.time() - t1
+            while (time.time() - t1 < 0.01):
+                # idle
+                print time.time() - t1
+                time.sleep(0.001)
 
 
 def main(argv):
