@@ -220,7 +220,7 @@ class BaxterPeripherals_impl(object):
         # initialize frame transform 
         self._listener = tf.TransformListener()
 
-	# initialize vacuum sensor
+        # initialize vacuum sensor
         self._l_vacuum_sensor = baxter_interface.AnalogIO('left_vacuum_sensor_analog')
         self._r_vacuum_sensor = baxter_interface.AnalogIO('right_vacuum_sensor_analog')
         self._vacuum_sensor_value = [0]*2

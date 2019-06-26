@@ -811,10 +811,8 @@ class Baxter_impl(object):
                 rospy.wait_for_message("/robot/range/left_hand_range/state", Range).range,
                 rospy.wait_for_message("/robot/range/right_hand_range/state", Range).range
             ]
-            print time.time() - t1
             while (time.time() - t1 < 0.01):
                 # idle
-                print time.time() - t1
                 time.sleep(0.001)
 
 
