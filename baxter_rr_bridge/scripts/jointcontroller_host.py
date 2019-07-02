@@ -69,6 +69,13 @@ property double[] endeffector_orientations
 property double[] endeffector_twists
 property double[] endeffector_wrenches
 
+function double[] getForces(string limb)
+function double[] getForcesDot(string limb)
+function double[] getPositions(string limb)
+function double[] getOrientations(string limb)
+function double[] getJointPositions(string limb)
+
+
 function void setControlMode(uint8 mode)
 
 # the following two functions have same functionality, the moveitSetJointCommand
@@ -143,6 +150,7 @@ class Baxter_impl(object):
         self._ee_or = [0]*8
         self._ee_tw = [0]*12
         self._ee_wr = [0]*12
+        self._ee_wr_dot = [0]*12
         self._l_joint_command = dict(zip(self._l_jnames,[0.0]*7))
         self._r_joint_command = dict(zip(self._r_jnames,[0.0]*7))
         self.MODE_POSITION = 0;
@@ -255,6 +263,55 @@ class Baxter_impl(object):
     def endeffector_wrenches(self):
         return self._ee_wr
 
+    def getForces(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            return self._ee_wr[3:6]
+
+        elif self._valid_limb_names[limb] == 'right':
+            return self._ee_wr[9:12]
+
+        elif self._valid_limb_names[limb] == 'both':
+            return self._ee_wr[3:6] + self._ee_wr[9:12]
+
+    def getForcesDot(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            return self._ee_wr_dot[3:6]
+
+        elif self._valid_limb_names[limb] == 'right':
+            return self._ee_wr_dot[9:12]
+
+        elif self._valid_limb_names[limb] == 'both':
+            return self._ee_wr_dot[3:6] + self._ee_wr_dot[9:12]
+
+    def getPositions(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            return self._ee_pos[0:3]
+
+        elif self._valid_limb_names[limb] == 'right':
+            return self._ee_pos[3:6]
+
+        elif self._valid_limb_names[limb] == 'both':
+            return self._ee_pos
+
+    def getOrientations(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            return self._ee_or[0:4]
+
+        elif self._valid_limb_names[limb] == 'right':
+            return self._ee_or[4:8]
+
+        elif self._valid_limb_names[limb] == 'both':
+            return self._ee_or
+
+    def getJointPositions(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            return self._jointpos[0:7]
+
+        elif self._valid_limb_names[limb] == 'right':
+            return self._jointpos[7:14]
+
+        elif self._valid_limb_names[limb] == 'both':
+            return self._jointpos
 
     
     def readJointPositions(self):
@@ -325,6 +382,7 @@ class Baxter_impl(object):
             self._ee_tw[10] = r_twist['linear'].y
             self._ee_tw[11] = r_twist['linear'].z
     def readEndEffectorWrenches(self):
+        old_ee_wr = self._ee_wr[:]
         l_wrench = self._left.endpoint_effort()
         if l_wrench:
             self._ee_wr[0] = l_wrench['torque'].x
@@ -341,6 +399,7 @@ class Baxter_impl(object):
             self._ee_wr[9] = r_wrench['force'].x
             self._ee_wr[10] = r_wrench['force'].y
             self._ee_wr[11] = r_wrench['force'].z
+        self._ee_wr_dot = [a_i - b_i for a_i, b_i in zip(self._ee_wr, old_ee_wr)]
 
     def readIRValues(self):
         return [
