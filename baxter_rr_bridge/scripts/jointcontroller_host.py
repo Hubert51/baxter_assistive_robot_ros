@@ -87,6 +87,7 @@ function void moveitSetJointCommand2(string limb, double[] command)
 function void setPoseTarget(double[] xyxw)
 function void go()
 function double[] moveCartesianPaths(string limb, double[] value)
+function void plan(string limb, double[] command)
 
 function void setMaxVelocityScalingFactor(double value)
 function void moveitStop(string limb)
@@ -546,7 +547,7 @@ class Baxter_impl(object):
         # if no valid solution was found
         else:
             print("INVALID POSE - No Valid Joint Solution Found.")
-        self.inner_test_function(resp.joints)
+        # self.inner_test_function(resp.joints)
         return resp.joints[0].position
 
 
@@ -661,6 +662,39 @@ class Baxter_impl(object):
         rospy.sleep(2)
         # self.left_arm = moveit_commander.MoveGroupCommander('left_arm')
         # self.both_arms = moveit_commander.MoveGroupCommander('both_arms')
+
+    def plan(self, limb, command):
+        limb = limb.lower()
+        pos_name = ['left_w0', 'left_w1', 'left_w2', 'right_s0', 'right_s1', 'right_w0', 'right_w1', 'right_w2', 'left_e0', 'left_e1', 'left_s0', 'left_s1', 'right_e0', 'right_e1']
+        init_pos = {'left_w0': -2.223505152039907, 'left_w1': 0.01802427425765361, 'left_w2': -1.190369091399081, 'right_s0': 0.4663301595171658, 'right_s1': 1.0365875174135684, 'right_w0': 2.1828546611609436, 'right_w1': 1.6616846884768743, 'right_w2': -2.28102943158561, 'left_e0': 0.027611654181937447, 'left_e1': 1.5627429276582652, 'left_s0': 0.858262250821889, 'left_s1': -0.04486893804564835, 'right_e0': 1.6110633224766557, 'right_e1': 2.249582825433959}
+        
+        # print type(command) == str 
+        print command == []
+        print command == None
+        if command == []:
+            self.both_arms.set_joint_value_target(None)
+            self.left_arm.set_joint_value_target(None)
+            self.right_arm.set_joint_value_target(None)
+            return
+
+        target_joint = {}
+        if self._valid_limb_names[limb] == 'left':
+            for i in xrange(0,len(self._l_jnames)):
+                target_joint[self._l_jnames[i]] = command[i]
+            self.left_arm.set_joint_value_target(target_joint)
+            plan = self.left_arm.plan()
+            # self.left_arm.stop()
+        elif self._valid_limb_names[limb] == 'right':
+            for i in xrange(0,len(self._r_jnames)):
+                target_joint[self._r_jnames[i]] = command[i]
+            self.right_arm.set_joint_value_target(target_joint)
+            plan = self.right_arm.plan()
+
+        print 'the plan is '
+        print plan
+        for item in plan:
+            slef.setJointCommand(limb, item.positions)
+            rospy.sleep(0.3)
 
     def setPoseTarget(self, xyxw):
         print self._jointpos
