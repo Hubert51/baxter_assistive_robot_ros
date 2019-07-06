@@ -55,6 +55,11 @@ struct JointValue
     field double[] values
 end struct
 
+struct Pose
+    field double[] pos
+    field double[] ori
+end struct
+
 object Baxter
 
 
@@ -74,6 +79,7 @@ function double[] getForcesDot(string limb)
 function double[] getPositions(string limb)
 function double[] getOrientations(string limb)
 function double[] getJointPositions(string limb)
+function double[] getJointVelocities(string limb)
 
 
 function void setControlMode(uint8 mode)
@@ -84,9 +90,11 @@ function void setJointCommand(string limb, double[] command)
 function void moveitSetJointCommand(string limb, double[] command)
 function void moveitSetJointCommand2(string limb, double[] command)
 # function void set_joint_value_target(double[] command)
-function void setPoseTarget(double[] xyxw)
+function void setPoseTarget(double[] pos, double[] ori)
 function void go()
-function double[] moveCartesianPaths(string limb, double[] value)
+# function double[] moveCartesianPaths(string limb, double[] value)
+function void moveCartesianPaths(string limb, Pose[] waypoint)
+
 function void plan(string limb, double[] command)
 
 function void setMaxVelocityScalingFactor(double value)
@@ -310,6 +318,16 @@ class Baxter_impl(object):
 
         elif self._valid_limb_names[limb] == 'right':
             return self._jointpos[7:14]
+
+        elif self._valid_limb_names[limb] == 'both':
+            return self._jointpos
+
+    def getJointVelocities(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            return self._jointvel[0:7]
+
+        elif self._valid_limb_names[limb] == 'right':
+            return self._jointvel[7:14]
 
         elif self._valid_limb_names[limb] == 'both':
             return self._jointpos
@@ -551,17 +569,35 @@ class Baxter_impl(object):
         return resp.joints[0].position
 
 
-    def moveCartesianPaths(self, limb, value):
-        if self._valid_limb_names[limb] == 'left':
-            pos = list( map(add, self._ee_pos[0:3], value) )
-            ori = self._ee_or[0:4]
-            joint_angle = self.solveIKfast(pos, ori, 'left')
+    # def moveCartesianPaths(self, limb, value):
+    #     if self._valid_limb_names[limb] == 'left':
+    #         pos = list( map(add, self._ee_pos[0:3], value) )
+    #         ori = self._ee_or[0:4]
+    #         joint_angle = self.solveIKfast(pos, ori, 'left')
 
-        elif self._valid_limb_names[limb] == 'right':
-            pos = list( map(add, self._ee_pos[3:], value) )
-            ori = self._ee_or[4:]
-            joint_angle = self.solveIKfast(pos, ori, 'right')
-        return joint_angle
+    #     elif self._valid_limb_names[limb] == 'right':
+    #         pos = list( map(add, self._ee_pos[3:], value) )
+    #         ori = self._ee_or[4:]
+    #         joint_angle = self.solveIKfast(pos, ori, 'right')
+    #     return joint_angle
+
+    def moveCartesianPaths(self, limb, value):
+        print value
+        (plan, fraction) = self.right_arm.compute_cartesian_path( value,   # waypoints to follow
+                                   0.01,        # eef_step
+                                   0.0) 
+        print plan
+        self.right_arm.execute(plan, wait=True)
+        # if self._valid_limb_names[limb] == 'left':
+        #     pos = list( map(add, self._ee_pos[0:3], value) )
+        #     ori = self._ee_or[0:4]
+        #     joint_angle = self.solveIKfast(pos, ori, 'left')
+
+        # elif self._valid_limb_names[limb] == 'right':
+        #     pos = list( map(add, self._ee_pos[3:], value) )
+        #     ori = self._ee_or[4:]
+        #     joint_angle = self.solveIKfast(pos, ori, 'right')
+        # return joint_angle
 
 
 
@@ -696,33 +732,43 @@ class Baxter_impl(object):
             slef.setJointCommand(limb, item.positions)
             rospy.sleep(0.3)
 
-    def setPoseTarget(self, xyxw):
-        print self._jointpos
+    def setPoseTarget(self, pos, ori):
+        # print self._jointpos
 
-        print self.left_arm.get_current_joint_values()
-        print self.right_arm.get_current_joint_values()
-        print self.both_arms.get_current_joint_values()
-        print left_arm.get_current_joint_values()
-        print right_arm.get_current_joint_values()
-        print both_arms.get_current_joint_values()
-
-        print self.left_arm.get_current_pose()
-        print self.both_arms.get_current_pose()
-
+        # print self.left_arm.get_current_joint_values()
+        # print self.right_arm.get_current_joint_values()
+        # print self.both_arms.get_current_joint_values()
+        # print left_arm.get_current_joint_values()
+        # print right_arm.get_current_joint_values()
+        # print both_arms.get_current_joint_values()
+        end_effector = self.left_arm.get_end_effector_link()
+        wpose = self.left_arm.get_current_pose(end_effector).pose
+        print wpose
+        # print self.left_arm.get_current_pose()
         # print self.both_arms.get_current_pose()
-        print self.left_arm.get_current_rpy()
-        print self.both_arms.get_current_rpy()
-        # print self.left_arm.get_current_state()
-        print self.robot.get_current_state()
+
+        # # print self.both_arms.get_current_pose()
+        # print self.left_arm.get_current_rpy()
+        # print self.both_arms.get_current_rpy()
+        # # print self.left_arm.get_current_state()
+        # print self.robot.get_current_state()
         # print self.both_arm.get_current_state()
 
 
 
         pose_goal = geometry_msgs.msg.Pose()
-        pose_goal.orientation.w = xyxw[3]
-        pose_goal.position.x = xyxw[0]
-        pose_goal.position.y = xyxw[1]
-        pose_goal.position.z = xyxw[2]
+        pose_goal.position.x = pos[0]
+        pose_goal.position.y = pos[1]
+        pose_goal.position.z = pos[2]
+        pose_goal.orientation.w = ori[0]
+        pose_goal.orientation.x = ori[1]
+        pose_goal.orientation.y = ori[2]
+        pose_goal.orientation.z = ori[3]
+        self.right_arm.set_pose_target(pose_goal)
+
+        plan = self.right_arm.go(wait=True)
+        print plan
+
         self.left_arm.set_pose_target(pose_goal)
 
 
