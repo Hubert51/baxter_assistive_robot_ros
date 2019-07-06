@@ -23,7 +23,6 @@ from geometry_msgs.msg import (
     Quaternion,
 )
 
-import utils
 from jointcontroller_host import Baxter_impl
 
 
@@ -31,23 +30,32 @@ from jointcontroller_host import Baxter_impl
 
 rospy.init_node('test_gripper', anonymous=True)
 leftgripper = baxter_interface.Gripper('left')
+leftgripper.stop()
+rospy.sleep(1)
+l_vacuum_sensor = baxter_interface.AnalogIO('left_vacuum_sensor_analog')
+
+
 i = 0
 while True:
+	break
 	leftgripper.command_suction(timeout=100)
-	leftgripper.set_vacuum_threshold(100)
+	# leftgripper.set_vacuum_threshold(100)
+	
+
 	print "good"
+	
 	# leftgripper.stop()
-	l_vacuum_sensor = baxter_interface.AnalogIO('left_vacuum_sensor_analog')
 	print l_vacuum_sensor.state()
+
 	# print leftgripper.type()
 	# print leftgripper.blowing()
 	# print leftgripper.sucking()
 	i += 1
-	if i > 5:
-		break
+	# if i > 3:
+	# 	break
 
 
-time.sleep(30)
+time.sleep(10)
 print "stop"
 leftgripper.stop()
 

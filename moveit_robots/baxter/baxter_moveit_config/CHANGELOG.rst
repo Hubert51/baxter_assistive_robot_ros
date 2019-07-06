@@ -2,17 +2,6 @@
 Changelog for package baxter_moveit_config
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.1 (2017-11-26)
-------------------
-* [capability] add gripper option for robot_description (`#57 <https://github.com/ros-planning/moveit_robots/issues/57>`_)
-* Contributors: Shingo Kitagawa
-
-1.1.0 (2016-11-15)
-------------------
-* [capability] Add option from Setup Assistant into old Baxter moveit config
-* [capability] Add option not to launch db in baxter_moveit_config
-* Contributors: Dave Coleman, Kentaro Wada
-
 1.0.6 (2016-04-19)
 ------------------
 * [fix] both_arm move group stopped functioning (`ref <https://groups.google.com/a/rethinkrobotics.com/forum/#!topic/brr-users/59kLdsAfR-g>`_)
