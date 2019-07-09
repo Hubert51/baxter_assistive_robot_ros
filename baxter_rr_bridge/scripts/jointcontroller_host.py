@@ -84,19 +84,22 @@ function double[] getOrientations(string limb)
 function double[] getJointPositions(string limb)
 function double[] getJointVelocities(string limb)
 
-
 function void setControlMode(uint8 mode)
 
 # the following two functions have same functionality, the moveitSetJointCommand
 # will consider the collision between arms themselves and environment obstacles
 function void setJointCommand(string limb, double[] command)
-function void moveitSetJointCommand(string limb, double[] command)
+function single jointTargetTraj(string limb, double[] command)
+function single cartesianPathTraj(string limb, Pose{list} waypoint)
+function single shiftPoseTraj(string limb, int8 axis, double value)
+function single poseTargetTraj(string limb, double[] pos, double[] ori)
+
+function void execute()
 function void moveitSetJointCommand2(string limb, double[] command)
 # function void set_joint_value_target(double[] command)
-function void setPoseTarget(double[] pos, double[] ori)
+# function void setPoseTarget(double[] pos, double[] ori)
 function void go()
 # function double[] moveCartesianPaths(string limb, double[] value)
-function void moveCartesianPaths(string limb, Pose{list} waypoint)
 
 function void plan(string limb, double[] command)
 function void setTolerance(double value)
@@ -106,8 +109,8 @@ function double[] getJointValueTarget(string limb)
 function void clearPathConstraints()
 function void clearTrajectoryConstraints()
 
-function void setPlanningTime(int32 seconds)
-function void setNumPlanningAttempts(int32 attempts)
+function void setPlanningTime(double seconds)
+function void setNumPlanningAttempts(double attempts)
 
 function void setStart(string limb)
 # function void moveitStop()
@@ -143,7 +146,7 @@ class Baxter_impl(object):
         print "Enabling Robot"
         rs = baxter_interface.RobotEnable()
         rs.enable()
-        self.process = None
+        self.trajectory_server = None
         self.trajectoryStart()
         
         self._valid_limb_names = {'left': 'left', 
@@ -176,6 +179,7 @@ class Baxter_impl(object):
         self.MODE_TORQUE = 2;
         self.MODE_MOVEIT = 3;
         self._mode = self.MODE_POSITION
+        self._plan = None
 
         # IR_values
         self._IR_values = [0] * 2
@@ -186,10 +190,11 @@ class Baxter_impl(object):
         self.left_arm = moveit_commander.MoveGroupCommander('left_arm')
         rospy.sleep(2)
 
+
         # initialize move_group parameter
-        self.setMaxVelocityScalingFactor(0.3)
-        self.setPlanningTime(10)
-        self.setNumPlanningAttempts(100)
+        self.setMaxVelocityScalingFactor(0.4)
+        self.setPlanningTime(5)
+        self.setNumPlanningAttempts(15)
 
         # initial joint command is current pose
         self.readJointPositions()
@@ -241,6 +246,7 @@ class Baxter_impl(object):
         self._t_effector.join()
         self._t_command.join()
         self._t_IR_values.join()
+        self.trajectory_server.stop()
         
         if (self._mode != self.MODE_POSITION):
             self._left.exit_control_mode()
@@ -443,13 +449,10 @@ class Baxter_impl(object):
                 mode != self.MODE_TORQUE and \
                 mode !=self.MODE_MOVEIT:
             return
-        self._mode = mode
         if mode == self.MODE_POSITION:
             # self._left.exit_control_mode(300)
             # self._right.exit_control_mode(300)
             # set command to current joint positions
-            print self._jointpos[7:14]
-            print self.right_arm.get_current_joint_values()
             self.setJointCommand('left',self._jointpos[0:7])
             self.setJointCommand('right',self._jointpos[7:14])
         elif mode == self.MODE_VELOCITY:
@@ -600,43 +603,6 @@ class Baxter_impl(object):
     #         joint_angle = self.solveIKfast(pos, ori, 'right')
     #     return joint_angle
 
-    def moveCartesianPaths(self, limb, value):
-        try:
-            print value[0].pos
-        except:
-            try:
-                print value.pos
-            except:
-                print "not list type"
-
-        pose1 = self.right_arm.get_current_pose().pose
-        pose2 = copy.deepcopy(pose1)
-        pose2.position.y += 0.15
-        print pose1
-        print pose2
-        waypoints = [pose1, pose2]
-        (plan, fraction) = self.right_arm.compute_cartesian_path( waypoints,   # waypoints to follow
-                                   0.01,        # eef_step
-                                   0.0) 
-        print plan
-        print fraction
-        self.right_arm.execute(plan, wait=True)
-        rospy.sleep(1)
-        # self._right.exit_control_mode() 
-
-
-        # if self._valid_limb_names[limb] == 'left':
-        #     pos = list( map(add, self._ee_pos[0:3], value) )
-        #     ori = self._ee_or[0:4]
-        #     joint_angle = self.solveIKfast(pos, ori, 'left')
-
-        # elif self._valid_limb_names[limb] == 'right':
-        #     pos = list( map(add, self._ee_pos[3:], value) )
-        #     ori = self._ee_or[4:]
-        #     joint_angle = self.solveIKfast(pos, ori, 'right')
-        # return joint_angle
-
-
 
     def inner_test_function(self, joints):
         print "total number of solution is ", len(joints)
@@ -644,20 +610,29 @@ class Baxter_impl(object):
             print joint
 
     def trajectoryStart(self):
-        package = 'baxter_interface' 
-        executable = 'joint_trajectory_action_server.py' 
-        node = roslaunch.core.Node(package, executable)
-        launch = roslaunch.scriptapi.ROSLaunch() 
-        launch.start()
-        self.process = launch.launch(node)
+        if self.trajectory_server == None:
+            package = 'baxter_interface' 
+            executable = 'joint_trajectory_action_server.py' 
+            node = roslaunch.core.Node(package, executable)
+            launch = roslaunch.scriptapi.ROSLaunch() 
+            launch.start()
+            self.trajectory_server = launch.launch(node)
+        elif not self.trajectory_server.is_alive():
+            self.trajectory_server.start()
+            rospy.sleep(1)
+
     
     def trajectoryStop(self):
         # print process.is_alive() 
-        self.process.stop()
+        if self.trajectory_server.is_alive():
+            self.trajectory_server.stop()
+            rospy.sleep(1)
 
 
 
     def setJointCommand(self, limb, command):
+        self.trajectoryStop()
+
         limb = limb.lower()
         if not limb in self._valid_limb_names.keys():
             return
@@ -675,7 +650,8 @@ class Baxter_impl(object):
                 self._r_joint_command[self._r_jnames[i]] = command[i]
             #     target_joint[self._r_jnames[i]] = 0.0
             # self.right_arm.set_joint_value_target(target_joint)
-     
+        self.trajectoryStop()
+
         # to reset the both arm
         # target_joint = {}
         # for i in xrange(0,len(self._l_jnames)):
@@ -685,6 +661,143 @@ class Baxter_impl(object):
         #     # self._r_joint_command[self._r_jnames[i]] = command[i]
         #     target_joint[self._r_jnames[i]] = 0.0
         # self.both_arms.set_joint_value_target(target_joint)
+
+    def jointTargetTraj(self, limb, command):
+        self.trajectoryStart()
+        limb = limb.lower()
+        pos_name = ['left_w0', 'left_w1', 'left_w2', 'right_s0', 'right_s1', 'right_w0', 'right_w1', 'right_w2', 'left_e0', 'left_e1', 'left_s0', 'left_s1', 'right_e0', 'right_e1']
+        init_pos = {'left_w0': -2.223505152039907, 'left_w1': 0.01802427425765361, 'left_w2': -1.190369091399081, 'right_s0': 0.4663301595171658, 'right_s1': 1.0365875174135684, 'right_w0': 2.1828546611609436, 'right_w1': 1.6616846884768743, 'right_w2': -2.28102943158561, 'left_e0': 0.027611654181937447, 'left_e1': 1.5627429276582652, 'left_s0': 0.858262250821889, 'left_s1': -0.04486893804564835, 'right_e0': 1.6110633224766557, 'right_e1': 2.249582825433959}
+        
+        # print type(command) == str 
+        print command == []
+        print command == None
+        if command == []:
+            self.both_arms.set_joint_value_target(None)
+            self.left_arm.set_joint_value_target(None)
+            self.right_arm.set_joint_value_target(None)
+            return
+
+        target_joint = {}
+        if limb == "both_arm" or self._valid_limb_names[limb] == 'both':
+            for i in range(len(pos_name)):
+                target_joint[pos_name[i]] = command[i]
+            self.both_arms.set_joint_value_target(target_joint)
+            self._plan = self.both_arms.plan()
+            # self.both_arms.go(wait=True)
+            # self.both_arms.stop()
+        elif self._valid_limb_names[limb] == 'left':
+            for i in xrange(0,len(self._l_jnames)):
+                target_joint[self._l_jnames[i]] = command[i]
+            self.left_arm.set_joint_value_target(target_joint)
+            self._plan = self.left_arm.plan()
+            # self.left_arm.go(wait=True)
+            # self.left_arm.stop()
+        elif self._valid_limb_names[limb] == 'right':
+            for i in xrange(0,len(self._r_jnames)):
+                target_joint[self._r_jnames[i]] = command[i]
+            self.right_arm.set_joint_value_target(target_joint)
+            self._plan = self.right_arm.plan()
+            # self.right_arm.go(wait=True)
+            # self.right_arm.stop()
+
+        if len(self._plan.joint_trajectory.points) > 0:
+            return 1
+        else:
+            return 0
+
+
+        # rospy.sleep(0.5)
+        # self.left_arm = moveit_commander.MoveGroupCommander('left_arm')
+        # self.both_arms = moveit_commander.MoveGroupCommander('both_arms')
+
+    def cartesianPathsTraj(self, limb, value):
+        self.trajectoryStart()
+        try:
+            print value[0].pos
+        except:
+            try:
+                print value.pos
+            except:
+                print "not list type"
+
+        pose1 = self.right_arm.get_current_pose().pose
+        pose2 = copy.deepcopy(pose1)
+        pose2.position.y += 0.15
+        print pose1
+        print pose2
+        waypoints = [pose1, pose2]
+        (self._plan, fraction) = self.right_arm.compute_cartesian_path( value,   # waypoints to follow
+                                   0.01,        # eef_step
+                                   0.0) 
+        # print plan.joint_trajectory.points[0].positions
+        return fraction
+
+    # def poseTargetTraj(self, limb, pos, ori):
+    #     self.trajectoryStart()
+    #     if self._valid_limb_names[limb] == 'left':
+    #         print self.left_arm.shift_pose_target(axis, value)
+    #         self._plan = self.right_arm.plan()
+
+    #     elif self._valid_limb_names[limb] == 'right':
+    #         self.right_arm.set_pose_target(self, pose)            
+    #         self._plan = self.right_arm.plan()
+
+    # @breif: Get the current pose of the end effector, add value to the corresponding axis 
+    #         (0..5: X, Y, Z, R, P, Y) and set the new pose as the pose target 
+    # @param: axis: integer from 0 to 5, represent one axis within X, Y, Z, R, P, Y 
+    # @param: value: double value to shift
+    def shiftPoseTraj(self, limb, axis, value):
+        self.trajectoryStart()
+        if self._valid_limb_names[limb] == 'left':
+            self.left_arm.shift_pose_target(axis, value)
+            self._plan = self.right_arm.plan()
+
+        elif self._valid_limb_names[limb] == 'right':
+            self.right_arm.shift_pose_target(axis, value)
+            self._plan = self.right_arm.plan()
+            # print len(self._plan.joint_trajectory.points)
+            # print '\n\n\n\n\n'
+            # self._plan = self.right_arm.go(wait=True)
+            # print len(self._plan.joint_trajectory.points)
+
+        return len(self._plan.joint_trajectory.points)
+
+    def poseTargetTraj(self, limb, pos, ori):
+        self.trajectoryStart()
+        # end_effector = self.left_arm.get_end_effector_link()
+        # wpose = self.left_arm.get_current_pose(end_effector).pose
+        # print wpose
+        pose_goal = geometry_msgs.msg.Pose()
+        pose_goal.position.x = pos[0]
+        pose_goal.position.y = pos[1]
+        pose_goal.position.z = pos[2]
+        pose_goal.orientation.w = ori[0]
+        pose_goal.orientation.x = ori[1]
+        pose_goal.orientation.y = ori[2]
+        pose_goal.orientation.z = ori[3]
+        if self._valid_limb_names[limb] == 'left':
+            self.left_arm.set_pose_target(pose_goal)
+            self._plan = self.left_arm.plan()
+
+        elif self._valid_limb_names[limb] == 'right':
+            self.right_arm.set_pose_target(pose_goal)
+            self._plan = self.right_arm.plan()
+        return len(self._plan.joint_trajectory.points)
+
+    def execute(self):
+        if len(self._plan.joint_trajectory.joint_names) == 14:
+            self.both_arms.execute(self._plan, wait=True)
+        else:
+            limb = self._plan.joint_trajectory.joint_names[0][0]
+            print limb
+            if self._valid_limb_names[limb] == 'left':
+                self.left_arm.execute(self._plan, wait=True)
+
+            elif self._valid_limb_names[limb] == 'right':
+                self.right_arm.execute(self._plan, wait=True)
+        self.right_arm.execute(self._plan, wait=True)
+
+
 
     def moveitSetJointCommand2(self, limb, command):
         self.both_arms.set_joint_value_target(None)
@@ -719,47 +832,6 @@ class Baxter_impl(object):
     #     self.right_arm.stop()
     #     self.both_arms.stop()
 
-
-    def moveitSetJointCommand(self, limb, command):
-        limb = limb.lower()
-        pos_name = ['left_w0', 'left_w1', 'left_w2', 'right_s0', 'right_s1', 'right_w0', 'right_w1', 'right_w2', 'left_e0', 'left_e1', 'left_s0', 'left_s1', 'right_e0', 'right_e1']
-        init_pos = {'left_w0': -2.223505152039907, 'left_w1': 0.01802427425765361, 'left_w2': -1.190369091399081, 'right_s0': 0.4663301595171658, 'right_s1': 1.0365875174135684, 'right_w0': 2.1828546611609436, 'right_w1': 1.6616846884768743, 'right_w2': -2.28102943158561, 'left_e0': 0.027611654181937447, 'left_e1': 1.5627429276582652, 'left_s0': 0.858262250821889, 'left_s1': -0.04486893804564835, 'right_e0': 1.6110633224766557, 'right_e1': 2.249582825433959}
-        
-        # print type(command) == str 
-        print command == []
-        print command == None
-        if command == []:
-            self.both_arms.set_joint_value_target(None)
-            self.left_arm.set_joint_value_target(None)
-            self.right_arm.set_joint_value_target(None)
-            return
-
-        target_joint = {}
-        if limb == "both_arm" or self._valid_limb_names[limb] == 'both':
-            for i in range(len(pos_name)):
-                target_joint[pos_name[i]] = command[i]
-            self.both_arms.set_joint_value_target(target_joint)
-            self.both_arms.plan()
-            self.both_arms.go(wait=True)
-            # self.both_arms.stop()
-        elif self._valid_limb_names[limb] == 'left':
-            for i in xrange(0,len(self._l_jnames)):
-                target_joint[self._l_jnames[i]] = command[i]
-            self.left_arm.set_joint_value_target(target_joint)
-            self.left_arm.plan()
-            self.left_arm.go(wait=True)
-            # self.left_arm.stop()
-        elif self._valid_limb_names[limb] == 'right':
-            for i in xrange(0,len(self._r_jnames)):
-                target_joint[self._r_jnames[i]] = command[i]
-            self.right_arm.set_joint_value_target(target_joint)
-            self.right_arm.plan()
-            self.right_arm.go(wait=True)
-            # self.right_arm.stop()
-        rospy.sleep(2)
-        # self.left_arm = moveit_commander.MoveGroupCommander('left_arm')
-        # self.both_arms = moveit_commander.MoveGroupCommander('both_arms')
-
     def plan(self, limb, command):
         limb = limb.lower()
         pos_name = ['left_w0', 'left_w1', 'left_w2', 'right_s0', 'right_s1', 'right_w0', 'right_w1', 'right_w2', 'left_e0', 'left_e1', 'left_s0', 'left_s1', 'right_e0', 'right_e1']
@@ -793,45 +865,6 @@ class Baxter_impl(object):
             slef.setJointCommand(limb, item.positions)
             rospy.sleep(0.3)
 
-    def setPoseTarget(self, pos, ori):
-        # print self._jointpos
-
-        # print self.left_arm.get_current_joint_values()
-        # print self.right_arm.get_current_joint_values()
-        # print self.both_arms.get_current_joint_values()
-        # print left_arm.get_current_joint_values()
-        # print right_arm.get_current_joint_values()
-        # print both_arms.get_current_joint_values()
-        end_effector = self.left_arm.get_end_effector_link()
-        wpose = self.left_arm.get_current_pose(end_effector).pose
-        print wpose
-        # print self.left_arm.get_current_pose()
-        # print self.both_arms.get_current_pose()
-
-        # # print self.both_arms.get_current_pose()
-        # print self.left_arm.get_current_rpy()
-        # print self.both_arms.get_current_rpy()
-        # # print self.left_arm.get_current_state()
-        # print self.robot.get_current_state()
-        # print self.both_arm.get_current_state()
-
-
-
-        pose_goal = geometry_msgs.msg.Pose()
-        pose_goal.position.x = pos[0]
-        pose_goal.position.y = pos[1]
-        pose_goal.position.z = pos[2]
-        pose_goal.orientation.w = ori[0]
-        pose_goal.orientation.x = ori[1]
-        pose_goal.orientation.y = ori[2]
-        pose_goal.orientation.z = ori[3]
-        self.right_arm.set_pose_target(pose_goal)
-
-        plan = self.right_arm.go(wait=True)
-        print plan
-
-        self.left_arm.set_pose_target(pose_goal)
-
 
     def go(self):
         self.left_arm.go(wait=True)
@@ -853,6 +886,7 @@ class Baxter_impl(object):
         self.right_arm.set_planning_time(seconds)
 
     def setNumPlanningAttempts(self, attempts):
+        attempts = int(attempts)
         self.both_arms.set_num_planning_attempts(attempts)
         self.left_arm.set_num_planning_attempts(attempts)
         self.right_arm.set_num_planning_attempts(attempts)
