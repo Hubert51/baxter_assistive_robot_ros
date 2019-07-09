@@ -1,0 +1,5 @@
+<launch>
+    <!-- Run joint trajectory action server node (required for MoveIt!) -->
+    <node pkg="baxter_interface" type="joint_trajectory_action_server.py" name="trajectory_node">
+    </node>
+</launch>

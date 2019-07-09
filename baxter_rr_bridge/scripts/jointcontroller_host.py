@@ -93,7 +93,7 @@ function void moveitSetJointCommand2(string limb, double[] command)
 function void setPoseTarget(double[] pos, double[] ori)
 function void go()
 # function double[] moveCartesianPaths(string limb, double[] value)
-function void moveCartesianPaths(string limb, Pose[] waypoint)
+function void moveCartesianPaths(string limb, Pose{list} waypoint)
 
 function void plan(string limb, double[] command)
 
