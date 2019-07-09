@@ -13,6 +13,8 @@ import thread
 import threading
 import numpy
 import geometry_msgs
+import roslaunch
+
 
 from geometry_msgs.msg import (
     PoseStamped,
@@ -37,6 +39,7 @@ import baxter_interface
 from moveit_python import PlanningSceneInterface, MoveGroupInterface
 
 from operator import add
+import copy
 
 # both_arms = moveit_commander.MoveGroupCommander('both_arms')
 # right_arm = moveit_commander.MoveGroupCommander('right_arm')
@@ -96,7 +99,7 @@ function void go()
 function void moveCartesianPaths(string limb, Pose{list} waypoint)
 
 function void plan(string limb, double[] command)
-
+function void setTolerance(double value)
 function void setMaxVelocityScalingFactor(double value)
 function void moveitStop(string limb)
 function double[] getJointValueTarget(string limb)
@@ -106,11 +109,14 @@ function void clearTrajectoryConstraints()
 function void setPlanningTime(int32 seconds)
 function void setNumPlanningAttempts(int32 attempts)
 
+function void setStart(string limb)
+# function void moveitStop()
 function void remember_joint_values(string name)
 function string{list} remembered()
 function void forget_joint_values(string name)
 # function  get_named_target_values(self, target):
-
+function void trajectoryStart()
+function void trajectoryStop()
 
 function void addBox(string name, double[] dim, double[] pos)
 function void removeScene(string name)
@@ -129,13 +135,16 @@ end object
 class Baxter_impl(object):
     def __init__(self):
         print "Initializing Node"
+        joint_state_topic = ['joint_states:=/robot/joint_states']
+        moveit_commander.roscpp_initialize(joint_state_topic)
         rospy.init_node('baxter_jointstates')
         moveit_commander.roscpp_initialize(sys.argv)
 
         print "Enabling Robot"
         rs = baxter_interface.RobotEnable()
         rs.enable()
-        
+        self.process = None
+        self.trajectoryStart()
         
         self._valid_limb_names = {'left': 'left', 
                                     'l': 'left', 
@@ -165,6 +174,7 @@ class Baxter_impl(object):
         self.MODE_POSITION = 0;
         self.MODE_VELOCITY = 1;
         self.MODE_TORQUE = 2;
+        self.MODE_MOVEIT = 3;
         self._mode = self.MODE_POSITION
 
         # IR_values
@@ -177,7 +187,7 @@ class Baxter_impl(object):
         rospy.sleep(2)
 
         # initialize move_group parameter
-        self.setMaxVelocityScalingFactor(0.6)
+        self.setMaxVelocityScalingFactor(0.3)
         self.setPlanningTime(10)
         self.setNumPlanningAttempts(100)
 
@@ -430,12 +440,16 @@ class Baxter_impl(object):
     def setControlMode(self, mode):
         if mode != self.MODE_POSITION and \
                 mode != self.MODE_VELOCITY and \
-                mode != self.MODE_TORQUE:
+                mode != self.MODE_TORQUE and \
+                mode !=self.MODE_MOVEIT:
             return
+        self._mode = mode
         if mode == self.MODE_POSITION:
-            self._left.exit_control_mode()
-            self._right.exit_control_mode()
+            # self._left.exit_control_mode(300)
+            # self._right.exit_control_mode(300)
             # set command to current joint positions
+            print self._jointpos[7:14]
+            print self.right_arm.get_current_joint_values()
             self.setJointCommand('left',self._jointpos[0:7])
             self.setJointCommand('right',self._jointpos[7:14])
         elif mode == self.MODE_VELOCITY:
@@ -446,6 +460,11 @@ class Baxter_impl(object):
             # set command to zeros
             self.setJointCommand('left',[0]*7)
             self.setJointCommand('right',[0]*7)
+        elif mode == self.MODE_MOVEIT:
+            # self.setJointCommand('left',[0]*7)
+            # self.setJointCommand('right',[0]*7)
+            pass
+
         
         self._mode = mode
 
@@ -582,12 +601,30 @@ class Baxter_impl(object):
     #     return joint_angle
 
     def moveCartesianPaths(self, limb, value):
-        print value
-        (plan, fraction) = self.right_arm.compute_cartesian_path( value,   # waypoints to follow
+        try:
+            print value[0].pos
+        except:
+            try:
+                print value.pos
+            except:
+                print "not list type"
+
+        pose1 = self.right_arm.get_current_pose().pose
+        pose2 = copy.deepcopy(pose1)
+        pose2.position.y += 0.15
+        print pose1
+        print pose2
+        waypoints = [pose1, pose2]
+        (plan, fraction) = self.right_arm.compute_cartesian_path( waypoints,   # waypoints to follow
                                    0.01,        # eef_step
                                    0.0) 
         print plan
+        print fraction
         self.right_arm.execute(plan, wait=True)
+        rospy.sleep(1)
+        # self._right.exit_control_mode() 
+
+
         # if self._valid_limb_names[limb] == 'left':
         #     pos = list( map(add, self._ee_pos[0:3], value) )
         #     ori = self._ee_or[0:4]
@@ -606,6 +643,19 @@ class Baxter_impl(object):
         for joint in joints:
             print joint
 
+    def trajectoryStart(self):
+        package = 'baxter_interface' 
+        executable = 'joint_trajectory_action_server.py' 
+        node = roslaunch.core.Node(package, executable)
+        launch = roslaunch.scriptapi.ROSLaunch() 
+        launch.start()
+        self.process = launch.launch(node)
+    
+    def trajectoryStop(self):
+        # print process.is_alive() 
+        self.process.stop()
+
+
 
     def setJointCommand(self, limb, command):
         limb = limb.lower()
@@ -617,24 +667,24 @@ class Baxter_impl(object):
         if self._valid_limb_names[limb] == 'left':
             for i in xrange(0,len(self._l_jnames)):
                 self._l_joint_command[self._l_jnames[i]] = command[i]
-                target_joint[self._l_jnames[i]] = 0.0
-            self.left_arm.set_joint_value_target(target_joint)
+            #     target_joint[self._l_jnames[i]] = 0.0
+            # self.left_arm.set_joint_value_target(target_joint)
 
         elif self._valid_limb_names[limb] == 'right':
             for i in xrange(0,len(self._r_jnames)):
                 self._r_joint_command[self._r_jnames[i]] = command[i]
-                target_joint[self._r_jnames[i]] = 0.0
-            self.right_arm.set_joint_value_target(target_joint)
+            #     target_joint[self._r_jnames[i]] = 0.0
+            # self.right_arm.set_joint_value_target(target_joint)
      
         # to reset the both arm
-        target_joint = {}
-        for i in xrange(0,len(self._l_jnames)):
-            target_joint[self._l_jnames[i]] = 0.0
+        # target_joint = {}
+        # for i in xrange(0,len(self._l_jnames)):
+        #     target_joint[self._l_jnames[i]] = 0.0
 
-        for i in xrange(0,len(self._r_jnames)):
-            # self._r_joint_command[self._r_jnames[i]] = command[i]
-            target_joint[self._r_jnames[i]] = 0.0
-        self.both_arms.set_joint_value_target(target_joint)
+        # for i in xrange(0,len(self._r_jnames)):
+        #     # self._r_joint_command[self._r_jnames[i]] = command[i]
+        #     target_joint[self._r_jnames[i]] = 0.0
+        # self.both_arms.set_joint_value_target(target_joint)
 
     def moveitSetJointCommand2(self, limb, command):
         self.both_arms.set_joint_value_target(None)
@@ -656,7 +706,18 @@ class Baxter_impl(object):
        """
     def set_joint_value_target(self, command):
         pass
-            
+
+    def setStart(self, limb):
+        if self._valid_limb_names[limb] == 'left':
+            self.left_arm.set_start_state_to_current_state()
+            # self.left_arm.stop()
+        elif self._valid_limb_names[limb] == 'right':
+            self.right_arm.set_start_state_to_current_state()
+
+    # def moveitStop(self):
+    #     self.left_arm.stop()
+    #     self.right_arm.stop()
+    #     self.both_arms.stop()
 
 
     def moveitSetJointCommand(self, limb, command):
@@ -876,7 +937,26 @@ class Baxter_impl(object):
         self.scene.remove_attached_object(link, name)
 
 
+    def setTolerance(self, value):
+        self.right_arm.set_goal_joint_tolerance (value)
+        self.right_arm.set_goal_orientation_tolerance(value)
+        self.right_arm.set_goal_position_tolerance(value)
+        self.right_arm.set_max_velocity_scaling_factor(0.0001)
+        self.right_arm.set_max_acceleration_scaling_factor(0.0001)
+
+
     def testFunction(self):
+        try:
+            print self.right_arm.get_goal_joint_tolerance()
+            print self.right_arm.get_goal_orientation_tolerance()
+            print self.right_arm.get_goal_position_tolerance()
+            print self.right_arm.get_goal_tolerance()
+        except:
+            print 'error in tolerance'
+        print self.right_arm.get_joint_value_target()
+        # print self.right_arm.get_named_targets()
+        print self.right_arm.get_remembered_joint_values()
+        self.right_arm.clear_pose_targets()
         right_ir_sensor =rospy.wait_for_message("/robot/range/left_hand_range/state", Range) 
         distance=right_ir_sensor.range
         print "-----> The distance to table:", distance,"m"
@@ -938,6 +1018,8 @@ class Baxter_impl(object):
                 #self._supp_cuff_int_pubs['right'].publish()
                 self._left.set_joint_torques(self._l_joint_command)
                 self._right.set_joint_torques(self._r_joint_command)
+            elif self._mode == self.MODE_MOVEIT:
+                pass
             while (time.time() - t1 < 0.01):
                 # idle
                 time.sleep(0.001)
