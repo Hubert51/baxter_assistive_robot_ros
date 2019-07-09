@@ -1,7 +1,8 @@
 <launch>
     <!-- Run joint trajectory action server node (required for MoveIt!) -->
-    <node pkg="baxter_interface" type="joint_trajectory_action_server.py" name="trajectory_node" >
-    </node>
+    <!--
+    <node pkg="baxter_interface" type="joint_trajectory_action_server.py" name="trajectory_node">
+    </node> -->
     <!-- Run launch file that runs MoveIt! and opens a Rviz window to visualize baxter and planning scene. Moreover remap the joint state topic to get feedback from the joints. -->
     <include file="$(find baxter_moveit_config)/launch/baxter_grippers.launch"/>    
     <remap from="joint_states" to="robot/joint_states"/> 

@@ -1,5 +1,5 @@
 <launch>
-	<include file="$(find baxter_measure_zero_point)/launch/baxter_pick_and_place.launch"/>
+	<include file="$(find baxter_rr_bridge)/launch/baxter_pick_and_place.launch"/>
 	<include file="$(find baxter_rr_bridge)/launch/jointController.launch"/>
 	<include file="$(find baxter_rr_bridge)/launch/leftCamera.launch"/>
 	<include file="$(find baxter_rr_bridge)/launch/rightCamera.launch"/>
