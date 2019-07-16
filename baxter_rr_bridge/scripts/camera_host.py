@@ -294,10 +294,11 @@ class BaxterCamera_impl(object):
                 IDS.append(anid[0])
             for corner in corners:
                 pc, Rc = self.getObjectPose(corner) 
+                # here switch the position vector in the matrix
                 Tmat.extend([   Rc[0][0],   Rc[1][0],   Rc[2][0],   0.0,
                                 Rc[0][1],   Rc[1][1],   Rc[2][1],   0.0,
                                 Rc[0][2],   Rc[1][2],   Rc[2][2],   0.0,
-                                pc[0],      pc[1],      pc[2],      1.0])
+                                pc[1],      pc[0],      pc[2],      1.0])
 
             detectioninfo.tmats = Tmat
             detectioninfo.ids = IDS
