@@ -40,6 +40,9 @@ from moveit_python import PlanningSceneInterface, MoveGroupInterface
 
 from operator import add
 import copy
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
+from geometry_msgs.msg import Pose, PoseStamped, PoseArray
 
 # both_arms = moveit_commander.MoveGroupCommander('both_arms')
 # right_arm = moveit_commander.MoveGroupCommander('right_arm')
@@ -94,6 +97,8 @@ function single cartesianPathTraj(string limb, Pose{list} waypoint)
 function single shiftPoseTraj(string limb, int8 axis, double value)
 function single poseTargetTraj(string limb, double[] pos, double[] ori)
 
+function void publishPoints(Pose{list} points)
+
 function void execute()
 function void moveitSetJointCommand2(string limb, double[] command)
 # function void set_joint_value_target(double[] command)
@@ -133,6 +138,38 @@ function void testFunction()
 end object
 
 """
+
+class CollisionObject(object):
+    def __init__(self, my_object):
+        # normal object is CollisionObject. If we meet the attached collision object
+        # need to get the information from `object` attributes
+        if my_object._type == "moveit_msgs/AttachedCollisionObject":
+            my_object = my_object.object
+        self._dim = my_object.primitives[0].dimensions
+        pos = my_object.primitive_poses[0].position
+        ori = my_object.primitive_poses[0].orientation
+        self._bound_pos = [pos.x, pos.y, pos.z]
+        self._id = my_object.id
+        self._ori = ori
+
+    @property
+    def dim(self):
+        return self._dim
+
+    @property
+    def bound_pos(self):
+        return self._bound_pos
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def ori(self):
+        return self._ori
+    
+    
+    
 
 
 class Baxter_impl(object):
@@ -180,6 +217,9 @@ class Baxter_impl(object):
         self.MODE_MOVEIT = 3;
         self._mode = self.MODE_POSITION
         self._plan = None
+
+        self.points = []
+        self.collisionObjects = []
 
         # IR_values
         self._IR_values = [0] * 2
@@ -240,14 +280,20 @@ class Baxter_impl(object):
         self._t_IR_values.daemon = True
         self._t_IR_values.start()
 
+        # self._t_publish_nodes = threading.Thread(target=self.nodePublish_worker)
+        # self._t_publish_nodes.daemon = True
+        # self._t_publish_nodes.start()
+
+
     def close(self):
         self._running = False
         self._t_joints.join()
         self._t_effector.join()
         self._t_command.join()
         self._t_IR_values.join()
+        # self._t_publish_nodes.join()
         self.trajectory_server.stop()
-        
+
         if (self._mode != self.MODE_POSITION):
             self._left.exit_control_mode()
             self._right.exit_control_mode()
@@ -710,7 +756,7 @@ class Baxter_impl(object):
         # self.left_arm = moveit_commander.MoveGroupCommander('left_arm')
         # self.both_arms = moveit_commander.MoveGroupCommander('both_arms')
 
-    def cartesianPathsTraj(self, limb, value):
+    def cartesianPathTraj(self, limb, value):
         self.trajectoryStart()
         try:
             print value[0].pos
@@ -719,14 +765,35 @@ class Baxter_impl(object):
                 print value.pos
             except:
                 print "not list type"
+        poses = []
+        for pose in value:
+            pose_goal = geometry_msgs.msg.Pose()
+            pose_goal.position.x = pose.pos[0]
+            pose_goal.position.y = pose.pos[1]
+            pose_goal.position.z = pose.pos[2]
+            pose_goal.orientation.w = pose.ori[0]
+            pose_goal.orientation.x = pose.ori[1]
+            pose_goal.orientation.y = pose.ori[2]
+            pose_goal.orientation.z = pose.ori[3]
+            poses.append(pose_goal)
 
-        pose1 = self.right_arm.get_current_pose().pose
-        pose2 = copy.deepcopy(pose1)
-        pose2.position.y += 0.15
-        print pose1
-        print pose2
-        waypoints = [pose1, pose2]
-        (self._plan, fraction) = self.right_arm.compute_cartesian_path( value,   # waypoints to follow
+        # add initialize into the waypoints
+        if len(poses) == 1:
+            if self._valid_limb_names[limb] == 'left':
+                pose1 = self.left_arm.get_current_pose().pose
+
+            elif self._valid_limb_names[limb] == 'right':
+                pose1 = self.right_arm.get_current_pose().pose
+
+            poses = [pose1, poses[0]]
+
+        # pose1 = self.right_arm.get_current_pose().pose
+        # pose2 = copy.deepcopy(pose1)
+        # pose2.position.y += 0.15
+        # print pose1
+        # print pose2
+        # waypoints = [pose1, pose2]
+        (self._plan, fraction) = self.right_arm.compute_cartesian_path( poses,   # waypoints to follow
                                    0.01,        # eef_step
                                    0.0) 
         # print plan.joint_trajectory.points[0].positions
@@ -1070,6 +1137,83 @@ class Baxter_impl(object):
                 # idle
                 time.sleep(0.001)
 
+    def publishPoints(self, points):
+        print "finishing adding objects total number is {}".format(len(self.collisionObjects))
+        self.collisionObjects = []
+        for my_object in self.scene.get_attached_objects().values(): 
+            self.collisionObjects.append(CollisionObject(my_object))
+        for my_object in self.scene.get_objects().values(): 
+            self.collisionObjects.append(CollisionObject(my_object))
+        self.points = points
+        self.nodePublish_worker(points)
+
+    def check_valid(self, pos):
+        for obj in self.collisionObjects:
+            if  abs(obj.bound_pos[0] - pos[0]) < obj.dim[0]/2 and  \
+                abs(obj.bound_pos[1] - pos[1]) < obj.dim[1]/2 and  \
+                abs(obj.bound_pos[2] - pos[2]) < obj.dim[2]/2 :
+                print obj.id
+                return True
+        return False
+
+    def create_marker(self, pos):
+
+
+        marker = Marker()
+        marker.header.frame_id = "base"
+        marker.type = marker.ARROW
+        marker.action = marker.ADD
+        # Pivot point is around the tip of its tail. Identity orientation points it along the +X axis. 
+        # scale.x is the arrow length, 
+        # scale.y is the arrow width and 
+        # scale.z is the arrow height. 
+        marker.scale.x = 0.1
+        marker.scale.y = 0.02
+        marker.scale.z = 0.01
+        in_flag = self.check_valid(pos )
+        if in_flag == True:
+            marker.color.r = 1.0
+            marker.color.g = 0.0
+        else:
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+        marker.color.a = 1.0
+
+        marker.color.b = 0.0
+        marker.pose.orientation.w = 1.0
+        marker.pose.position.x = pos[0]
+        marker.pose.position.y = pos[1]
+        marker.pose.position.z = pos[2]
+        print "adding a marker"
+        return marker
+
+
+    def nodePublish_worker(self, points):
+        pub = rospy.Publisher('Marker', MarkerArray, queue_size=1000)
+        # rospy.init_node('pose_publisher', anonymous=True)
+        rate = rospy.Rate(2) # Hz
+        poseArray = PoseArray()        
+        poseArray.header.frame_id = 'base'
+        markerArray = MarkerArray()
+        
+        # this is Array of arrow
+        # p1 = create_arrow([0.6155, -0.4195, -0.2159], [0, 0, 0, 1])
+        # p2 = create_arrow([0.6155, -0.4195, 0.2159], [0, 0, 0, 1])
+        # poseArray.poses = [p1, p2]
+        markerArray.markers = []
+        print 'start adding markers'
+        id = 0
+        for point in points:
+            # marker = self.create_marker(point.pos)
+            markerArray.markers.append(self.create_marker(point.pos))
+            print id
+            id += 1
+        id = 0
+        for m in markerArray.markers:
+            m.id = id
+            id += 1
+        pub.publish(markerArray)
+        rate.sleep()
 
 def main(argv):
     # parse command line arguments
