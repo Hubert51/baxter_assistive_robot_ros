@@ -12,7 +12,8 @@ from jointcontroller_host import CollisionObject
 # http://wiki.ros.org/rviz/DisplayTypes/Marker
 
 
-def create_marker(pos):
+def create_marker(pos, flag):
+    # print pos
     marker = Marker()
     marker.header.frame_id = "base"
     marker.type = marker.ARROW
@@ -25,8 +26,8 @@ def create_marker(pos):
     marker.scale.y = 0.02
     marker.scale.z = 0.01
     marker.color.a = 1.0
-    marker.color.r = 0.0
-    marker.color.g = 1.0
+    marker.color.r = float(flag)
+    marker.color.g = float(not flag)
     marker.color.b = 0.0
     marker.pose.orientation.w = 1.0
     marker.pose.position.x = pos[0]
