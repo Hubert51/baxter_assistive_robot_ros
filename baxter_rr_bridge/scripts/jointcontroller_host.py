@@ -4,14 +4,14 @@ roslib.load_manifest('baxter_rr_bridge')
 import rospy
 import baxter_interface
 from std_msgs.msg import Empty
-
+import tf
 import sys, argparse
 import struct
 import time
 import RobotRaconteur as RR
 import thread
 import threading
-import numpy
+import numpy as np
 import geometry_msgs
 import roslaunch
 
@@ -43,6 +43,10 @@ import copy
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray
+
+from itertools import product
+from scipy.spatial import ConvexHull
+
 
 # both_arms = moveit_commander.MoveGroupCommander('both_arms')
 # right_arm = moveit_commander.MoveGroupCommander('right_arm')
@@ -145,20 +149,28 @@ class CollisionObject(object):
         # need to get the information from `object` attributes
         if my_object._type == "moveit_msgs/AttachedCollisionObject":
             my_object = my_object.object
-        self._dim = my_object.primitives[0].dimensions
+
         pos = my_object.primitive_poses[0].position
         ori = my_object.primitive_poses[0].orientation
-        self._bound_pos = [pos.x, pos.y, pos.z]
+        vertex = []
+        self._dim = my_object.primitives[0].dimensions
+        self._pos = [pos.x, pos.y, pos.z]
         self._id = my_object.id
         self._ori = ori
+
+        comb = product([0.5, -0.5], repeat=3) 
+        cof = np.array(list(comb))
+        offset = cof * self._dim
+        self._base_vertex = self._pos - offset
+        self._self_vertex = offset
 
     @property
     def dim(self):
         return self._dim
 
     @property
-    def bound_pos(self):
-        return self._bound_pos
+    def pos(self):
+        return self._pos
 
     @property
     def id(self):
@@ -167,8 +179,48 @@ class CollisionObject(object):
     @property
     def ori(self):
         return self._ori
+
+    @property
+    def quat(self):
+        #type(pose) = geometry_msgs.msg.Pose
+        self._quat = (self._ori.x, self._ori.y, self._ori.z, self._ori.w)
+        return self._quat
+
+    @property
+    def base_vertex(self):
+        return self._base_vertex
     
+    @property
+    def self_vertex(self):
+        return self._self_vertex
     
+    @property
+    def vertex_with_orientation(self):
+        points = np.empty((0,3))
+        result = tf.transformations.quaternion_matrix(self.quat)
+        for point in self._self_vertex:
+            # from base frame to rectangle frame
+            # points.append(np.dot( result[0:3,0:3], point))
+            points = np.append(points, np.array([np.dot( result[0:3,0:3], point)]), axis=0)
+        points += self._pos
+        return points
+
+    def check_ptr(self, points):
+        hull = ConvexHull(self.vertex_with_orientation, incremental=True)
+        in_hull_1 = asarray([self.pnt_in_cvex_hull(hull, pnt) for pnt in points], dtype=bool)
+        return in_hull_1
+
+
+    def pnt_in_cvex_hull(self, hull, pnt):
+        '''
+        Checks if `pnt` is inside the convex hull.
+        `hull` -- a QHull ConvexHull object
+        `pnt` -- point array of shape (3,)
+        '''
+        new_hull = ConvexHull(concatenate((hull.points, [pnt])))
+        if numpy.array_equal(new_hull.vertices, hull.vertices): 
+            return True
+        return False
     
 
 
@@ -786,7 +838,7 @@ class Baxter_impl(object):
                 pose1 = self.right_arm.get_current_pose().pose
 
             poses = [pose1, poses[0]]
-
+        print poses
         # pose1 = self.right_arm.get_current_pose().pose
         # pose2 = copy.deepcopy(pose1)
         # pose2.position.y += 0.15
@@ -1149,9 +1201,9 @@ class Baxter_impl(object):
 
     def check_valid(self, pos):
         for obj in self.collisionObjects:
-            if  abs(obj.bound_pos[0] - pos[0]) < obj.dim[0]/2 and  \
-                abs(obj.bound_pos[1] - pos[1]) < obj.dim[1]/2 and  \
-                abs(obj.bound_pos[2] - pos[2]) < obj.dim[2]/2 :
+            if  abs(obj.pos[0] - pos[0]) < obj.dim[0]/2 and  \
+                abs(obj.pos[1] - pos[1]) < obj.dim[1]/2 and  \
+                abs(obj.pos[2] - pos[2]) < obj.dim[2]/2 :
                 print obj.id
                 return True
         return False
