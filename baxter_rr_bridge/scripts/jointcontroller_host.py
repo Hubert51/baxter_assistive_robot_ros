@@ -194,6 +194,7 @@ class CollisionObject(object):
     def self_vertex(self):
         return self._self_vertex
     
+    
     @property
     def vertex_with_orientation(self):
         points = np.empty((0,3))
@@ -284,7 +285,7 @@ class Baxter_impl(object):
 
 
         # initialize move_group parameter
-        self.setMaxVelocityScalingFactor(0.4)
+        self.setMaxVelocityScalingFactor(0.15)
         self.setPlanningTime(5)
         self.setNumPlanningAttempts(15)
 
@@ -385,6 +386,10 @@ class Baxter_impl(object):
     @property 
     def endeffector_wrenches(self):
         return self._ee_wr
+
+    # @property
+    # def speed(self):
+    #     return self._speed
 
     def getForces(self, limb):
         if self._valid_limb_names[limb] == 'left':
